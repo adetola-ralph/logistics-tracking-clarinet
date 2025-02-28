@@ -301,7 +301,7 @@
       (try! (add-tracking-update 
         shipment-id 
         "Dispute Center" 
-        (concat "Dispute initiated: " dispute-reason)))
+        dispute-reason))
       
       (ok true)
     )
@@ -340,35 +340,42 @@
             ;; Calculate refund amount
             (let ((refund-amount (/ (* (get fee shipment) refund-percentage) u100)))
               ;; Transfer refund to sender if applicable
-              (if (> refund-amount u0)
-                  (as-contract 
-                    (stx-transfer? 
-                      refund-amount 
-                      tx-sender 
-                      (get sender shipment)
-                    )
-                  )
-                  (ok true))
-              
-              ;; Transfer remaining amount to carrier
-              (let ((carrier-amount (- (get fee shipment) refund-amount)))
-                (if (> carrier-amount u0)
+              (let ((refund-result 
+                (if (> refund-amount u0)
                     (as-contract 
                       (stx-transfer? 
-                        carrier-amount 
+                        refund-amount 
                         tx-sender 
-                        (get carrier shipment)
-                      )
-                    )
-                    (ok true))
+                        (get sender shipment)
+                      ))
+                    (ok true))))
                 
-                ;; Add tracking update for resolution
-                (try! (add-tracking-update 
-                  shipment-id 
-                  "Dispute Center" 
-                  (concat "Dispute resolved: " resolution-status)))
+                (try! refund-result)
                 
-                (ok true)
+                ;; Calculate and transfer remaining amount to carrier
+                (let ((carrier-amount (- (get fee shipment) refund-amount)))
+                  ;; Transfer to carrier if amount is greater than 0
+                  (let ((carrier-result
+                    (if (> carrier-amount u0)
+                        (as-contract 
+                          (stx-transfer? 
+                            carrier-amount 
+                            tx-sender 
+                            (get carrier shipment)
+                          ))
+                        (ok true))))
+                    
+                    (try! carrier-result)
+                    
+                    ;; Add tracking update for resolution
+                    (try! (add-tracking-update 
+                      shipment-id 
+                      "Dispute Center" 
+                      (concat "Dispute resolved: " resolution-status)))
+                    
+                    (ok true)
+                  )
+                )
               )
             )
           )
@@ -399,13 +406,12 @@
         }))
       
       ;; Refund fee to sender
-      (as-contract 
+      (try! (as-contract 
         (stx-transfer? 
           (get fee shipment) 
           tx-sender 
           (get sender shipment)
-        )
-      )
+        )))
       
       ;; Add tracking update for cancellation
       (try! (add-tracking-update 
