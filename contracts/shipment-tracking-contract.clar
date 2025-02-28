@@ -33,6 +33,7 @@
   fee: uint,
   status: uint,
   creation-time: uint,
+  last-updated: uint,
   dispute-period: uint
 })
 
@@ -41,7 +42,9 @@
   shipment-id: uint,
   dispute-initiator: principal,
   dispute-reason: (string-ascii 100),
-  resolution-status: (string-ascii 20)
+  resolution-status: (string-ascii 20),
+  created-at: uint,
+  resolved-at: uint
 })
 
 ;; Tracking updates map - stores multiple updates per shipment
@@ -114,7 +117,7 @@
     (try! (stx-transfer? fee tx-sender (as-contract tx-sender)))
     
     ;; Get current block time
-    (let ((current-time block-height))
+    (let ((current-time stacks-block-height))
       ;; Store shipment details
       (map-insert shipments shipment-id {
         sender: tx-sender,
@@ -173,12 +176,12 @@
       (map-set shipments shipment-id 
         (merge shipment { 
           status: new-status,
-          last-updated: block-height
+          last-updated: stacks-block-height
         }))
       
       ;; If delivered, automatically release payment to carrier
       (if (is-eq new-status STATUS-DELIVERED)
-          (try! (release-payment shipment-id))
+          (release-payment shipment-id)
           (ok true))
     )
     ERR-SHIPMENT-NOT-FOUND
@@ -237,7 +240,7 @@
             tracking-updates 
             (tuple (shipment-id shipment-id) (update-id counter))
             {
-              timestamp: block-height,
+              timestamp: stacks-block-height,
               location: location,
               description: description,
               updated-by: tx-sender
@@ -246,7 +249,7 @@
           
           ;; Update last-updated timestamp in shipment
           (map-set shipments shipment-id 
-            (merge shipment { last-updated: block-height }))
+            (merge shipment { last-updated: stacks-block-height }))
           
           (ok counter)
         )
@@ -281,7 +284,7 @@
       (map-set shipments shipment-id 
         (merge shipment { 
           status: STATUS-DISPUTED,
-          last-updated: block-height
+          last-updated: stacks-block-height
         }))
       
       ;; Create dispute record
@@ -290,7 +293,7 @@
         dispute-initiator: tx-sender,
         dispute-reason: dispute-reason,
         resolution-status: "pending",
-        created-at: block-height,
+        created-at: stacks-block-height,
         resolved-at: u0
       })
       
@@ -331,7 +334,7 @@
             (map-set disputes shipment-id 
               (merge dispute { 
                 resolution-status: resolution-status,
-                resolved-at: block-height
+                resolved-at: stacks-block-height
               }))
             
             ;; Calculate refund amount
@@ -392,7 +395,7 @@
       (map-set shipments shipment-id 
         (merge shipment { 
           status: STATUS-CANCELLED,
-          last-updated: block-height
+          last-updated: stacks-block-height
         }))
       
       ;; Refund fee to sender
@@ -447,4 +450,3 @@
     (err ERR-SHIPMENT-NOT-FOUND)
   )
 )
-
