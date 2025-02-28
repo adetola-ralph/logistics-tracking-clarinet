@@ -5,6 +5,7 @@
 (define-constant STATUS-IN-TRANSIT u1)
 (define-constant STATUS-DELIVERED u2)
 (define-constant STATUS-DISPUTED u3)
+(define-constant STATUS-CANCELLED u4)  ;; New status for cancelled shipments
 
 ;; Error constants for precise error handling
 (define-constant ERR-UNAUTHORIZED (err u100))
@@ -14,6 +15,10 @@
 (define-constant ERR-INVALID-SHIPMENT-ID (err u104))
 (define-constant ERR-INVALID-FEE (err u105))
 (define-constant ERR-DUPLICATE-SHIPMENT (err u106))
+(define-constant ERR-ALREADY-DISPUTED (err u107))
+(define-constant ERR-DISPUTE-NOT-FOUND (err u108))
+(define-constant ERR-PAYMENT-FAILED (err u109))
+(define-constant ERR-INVALID-MILESTONE (err u110))
 
 ;; Contract owner
 (define-constant CONTRACT-OWNER tx-sender)
