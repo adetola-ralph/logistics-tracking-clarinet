@@ -44,6 +44,17 @@
   resolution-status: (string-ascii 20)
 })
 
+;; Tracking updates map - stores multiple updates per shipment
+(define-map tracking-updates (tuple (shipment-id uint) (update-id uint)) {
+  timestamp: uint,
+  location: (string-ascii 50),
+  description: (string-ascii 100),
+  updated-by: principal
+})
+
+;; Counter for tracking updates
+(define-map shipment-update-counters uint uint)
+
 ;; Validate shipment creation inputs
 (define-private (validate-shipment-inputs 
   (shipment-id uint)
